@@ -64,6 +64,33 @@ def migrated_db_url():
 
 
 @pytest.fixture
+async def api(db):
+    """httpx client against the real app, wired to the isolated migrated test database.
+    The Redis rate limiter is disabled here (it has its own tests)."""
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    from app.api.dependencies import auth_rate_limit
+    from app.db.session import get_session
+    from app.main import app
+
+    engine = create_async_engine(db.url, poolclass=NullPool)
+    maker = async_sessionmaker(engine, expire_on_commit=False)
+
+    async def _session():
+        async with maker() as s:
+            yield s
+
+    app.dependency_overrides[get_session] = _session
+    app.dependency_overrides[auth_rate_limit] = lambda: None
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        yield client
+    app.dependency_overrides.clear()
+    await engine.dispose()
+
+
+@pytest.fixture
 def db(migrated_db_url):
     """Sync engine on the test DB; tables emptied after each test."""
     engine = create_engine(migrated_db_url)

@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
 
+    # Per-IP limit on /auth/register and /auth/login. Behind our nginx, set TRUST_PROXY_HEADERS=true
+    # so the real client IP (X-Real-IP) is used; never enable it if port 8000 is reachable directly.
+    auth_rate_limit_per_minute: int = 10
+    trust_proxy_headers: bool = False
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

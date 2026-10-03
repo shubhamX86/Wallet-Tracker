@@ -31,6 +31,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-whale}:${POSTGRES_PASSWORD:-whale}@postgres:5432/${POSTGRES_DB:-whale}
       REDIS_URL: redis://redis:6379/0
+      TRUST_PROXY_HEADERS: "true"  # nginx sets X-Real-IP; unpublish port 8000 in production
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }

@@ -11,8 +11,9 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from eth_utils import is_checksum_address, to_checksum_address
+from eth_utils import to_checksum_address
 
+from app.blockchain.addresses import normalize_evm_address
 from app.blockchain.base import (
     BlockchainAdapter, BlockchainError, DataNotFoundError, InvalidAddressError, NativeBalance,
     ProviderHealth, ProviderResponseError, TokenBalance, TransactionInfo, TxStatus,
@@ -72,12 +73,7 @@ class EvmAdapter(BlockchainAdapter):
     def normalize_address(self, address: str) -> str:
         """0x + 40 hex. Mixed-case input must satisfy EIP-55; all-lower/upper carries no
         checksum and is accepted. Always returns the EIP-55 checksummed form."""
-        if not isinstance(address, str) or not _ADDR_RE.match(address):
-            raise InvalidAddressError("Invalid EVM address format")
-        body = address[2:]
-        if body != body.lower() and body != body.upper() and not is_checksum_address(address):
-            raise InvalidAddressError("Invalid EVM address checksum")
-        return to_checksum_address(address)
+        return normalize_evm_address(address)
 
     @staticmethod
     def normalize_tx_hash(tx_id: str) -> str:

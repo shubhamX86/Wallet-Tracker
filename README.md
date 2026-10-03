@@ -4,22 +4,29 @@ Multi-chain, **read-only** whale wallet monitoring and analytics. It never asks 
 
 Single repository rooted here: `backend/` (FastAPI), `frontend/` (Next.js), `infra/` (nginx), `docker-compose.yml`.
 
-## Status — Phase 1 (foundation)
+## Status
 
-| Done | Pending |
+| Done (tested) | Not built yet |
 |---|---|
-| FastAPI app, structured JSON logging, CORS, error handlers | Auth, DB models, Alembic migrations (Phase 2) |
-| `/api/v1/health`, `/api/v1/health/ready` (DB + Redis), `/api/v1/chains` | Ethereum/Solana adapters (Phase 3) |
-| Celery worker skeleton (`system.ping` only) | Ingestion, classification, alerts (Phases 4–9) |
-| Next.js dark dashboard shell, 12-item nav, live status/registry | shadcn/ui, Recharts, TradingView charts (Phase 7+) |
-| Docker Compose: postgres, redis, backend, worker, frontend, nginx | AI insights, hardening (Phase 10) |
+| FastAPI app, structured JSON logging, CORS, error envelope | Transaction ingestion / indexer integration, workers beyond `ping` |
+| Health, chains, **auth** (register/login/me, Argon2id, JWT, per-IP rate limit), **wallet CRUD** (11-chain address validation, per-user isolation) | Classifier, whale detection, analytics/prices, alerts, AI |
+| Alembic migrations 0001–0003 (users, wallets, transactions, sync checkpoints, classifications) | Adapters other than BNB (balances/tx lookup via RPC; not exposed by any API yet) |
+| Next.js dashboard shell (Overview only) | Login/wallet pages, charts, live updates |
+| Docker Compose: postgres, redis, backend, worker, frontend, nginx | CI, backups, HTTPS, metrics, token revocation / HttpOnly cookie sessions |
 
-Only Overview exists as a page; other nav links are placeholders (404) until their phases. Chain registry entries are all `planned` — no chain is live.
+Other nav links are placeholders (404). Every chain in the registry is still `planned`: only BNB has adapter code, and nothing ingests data yet.
+
+### Auth & wallet API (bearer tokens)
+`POST /api/v1/auth/register` · `POST /api/v1/auth/login` · `GET /api/v1/auth/me` · `GET|POST /api/v1/wallets/` · `GET|DELETE /api/v1/wallets/{id}` — docs at `/api/docs`.
+Passwords: 12–128 chars, Argon2id. Tokens last 30 min and are sent as `Authorization: Bearer`. Another user's wallet returns 404, never 403.
+Limitations: no refresh/revocation, address validation checks format only (Bitcoin is mainnet-only), rate limiting is per IP and needs `TRUST_PROXY_HEADERS=true` behind nginx (set in compose; unpublish port 8000 in production).
+
+After a fresh database volume, apply migrations once: `docker compose exec -T backend alembic upgrade head`.
 
 ## Run with Docker (PowerShell)
 
 ```powershell
-cd D:\wallet
+cd E:\Wallet-Tracker
 Copy-Item .env.example .env
 docker compose up --build -d
 docker compose ps
@@ -34,13 +41,13 @@ Open http://localhost (nginx) or http://localhost:3000. API docs: http://localho
 docker compose up -d postgres redis
 
 # backend
-cd D:\wallet\backend
+cd E:\Wallet-Tracker\backend
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements.txt
 .\.venv\Scripts\python -m uvicorn app.main:app --reload --port 8000
 
 # frontend (new terminal)
-cd D:\wallet\frontend
+cd E:\Wallet-Tracker\frontend
 npm install
 npm run dev
 ```
@@ -50,8 +57,8 @@ npm run dev
 ```powershell
 curl http://localhost:8000/api/v1/health
 curl http://localhost:8000/api/v1/health/ready
-cd D:\wallet\backend; .\.venv\Scripts\python -m pytest -q
-cd D:\wallet\frontend; npm run build
+cd E:\Wallet-Tracker\backend; .\.venv\Scripts\python -m pytest -q
+cd E:\Wallet-Tracker\frontend; npm run build
 ```
 
 ## File guide
